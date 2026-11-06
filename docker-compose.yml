@@ -1,0 +1,62 @@
+services:
+  llm-engine:
+    image: ollama/ollama:latest
+    container_name: ollama-server
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai-net
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  llm-model-init:
+    image: ollama/ollama:latest
+    entrypoint: ["ollama"]
+    command: ["pull", "llava"]
+    environment:
+      - OLLAMA_HOST=http://ollama-server:11434
+    depends_on:
+      llm-engine:
+        condition: service_healthy
+    networks:
+      - ai-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/dockerfile
+    container_name: fastapi-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_BASE_URL=http://ollama-server:11434
+      - LLM_MODEL=llava
+    depends_on:
+      llm-model-init:
+        condition: service_completed_successfully
+    networks:
+      - ai-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    container_name: sketch-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - ai-net
+
+volumes:
+  ollama_data:
+
+networks:
+  ai-net:
+    driver: bridge
