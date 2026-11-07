@@ -1,10 +1,9 @@
 import base64
-import binascii
 from io import BytesIO
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import httpx
@@ -33,21 +32,8 @@ def read_root():
     return {"status": "running"}
 
 @app.post("/api/chat")
-async def chat_endpoint(payload: dict):
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
-
-    image = payload.get("image")
-    if not isinstance(image, str) or not image:
-        raise HTTPException(status_code=400, detail="A sketch image is required.")
-    if len(image) > MAX_IMAGE_BYTES * 4 // 3 + 4:
-        raise HTTPException(status_code=413, detail="The sketch image is too large.")
-
-    try:
-        image_bytes = base64.b64decode(image, validate=True)
-    except (binascii.Error, ValueError):
-        raise HTTPException(status_code=400, detail="The sketch image must be valid base64 data.")
-
+async def chat_endpoint(image: UploadFile = File(...)):
+    image_bytes = await image.read(MAX_IMAGE_BYTES + 1)
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="The sketch image is too large.")
 

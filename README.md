@@ -24,8 +24,8 @@ The Ollama model is stored in the `ollama_data` Docker volume and is retained wh
 
 ## How sketch analysis works
 
-1. Draw on the canvas and select **Analyze sketch**. Use **Clear sketch** to start over.
-2. The frontend sends the canvas image to the backend as base64-encoded PNG data.
+1. Choose **Draw sketch** to draw on the canvas or **Upload image** to select an existing sketch. Use **Analyze sketch** to submit and the clear/remove button to start over.
+2. The frontend sends the canvas image or uploaded image to the backend as a multipart file.
 3. The backend validates and resizes the image, reads the system instructions from `prompts/systemprompt.txt`, and sends the image and instructions to Ollama.
 4. The streamed model analysis is displayed below the canvas.
 
@@ -39,7 +39,7 @@ No separate text description is sent with the sketch.
 | FastAPI backend | http://localhost:8000 |
 | Ollama API | http://localhost:11434 |
 
-The backend exposes `POST /api/chat`; its JSON request body contains an `image` field with the base64-encoded image.
+The backend exposes `POST /api/chat` and accepts the sketch as a multipart file upload. OpenAPI/Swagger documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ## Configuration
 

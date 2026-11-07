@@ -39,6 +39,31 @@ input {
   margin-top: 20px;
 }
 
+.canvas-panel[hidden],
+.upload-panel[hidden] {
+  display: none;
+}
+
+.mode-selector {
+  display: flex;
+  gap: 8px;
+  padding: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.mode-button {
+  flex: 1;
+  background: transparent;
+  color: #cbd5e1;
+}
+
+.mode-button.active {
+  background: rgba(59, 130, 246, 0.24);
+  color: #fff;
+}
+
 .canvas-card {
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(148, 163, 184, 0.2);
@@ -60,6 +85,77 @@ canvas {
   background: linear-gradient(180deg, #fff, #f8fafc);
   cursor: crosshair;
   touch-action: none;
+}
+
+.upload-panel {
+  display: flex;
+  min-height: 392px;
+  margin-top: 20px;
+  padding: 24px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.7);
+  text-align: center;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.file-input:focus-visible + .upload-prompt,
+.file-input:focus-visible ~ .upload-button {
+  outline: 2px solid #60a5fa;
+  outline-offset: 3px;
+}
+
+.upload-prompt {
+  display: grid;
+  gap: 6px;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.upload-hint {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.upload-button {
+  display: inline-block;
+  cursor: pointer;
+}
+
+.selected-image {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.selected-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: white;
+}
+
+.selected-image p {
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #cbd5e1;
 }
 
 .action-row {

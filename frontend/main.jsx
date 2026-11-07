@@ -5,9 +5,13 @@ const API_URL = 'http://localhost:8000/api/chat';
 
 function SketchApp() {
   const canvasRef = useRef(null);
+  const uploadInputRef = useRef(null);
   const hasDrawingRef = useRef(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inputMode, setInputMode] = useState('draw');
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState('');
   const [result, setResult] = useState('');
 
   useEffect(() => {
@@ -36,6 +40,17 @@ function SketchApp() {
 
     return () => window.removeEventListener('resize', resizeCanvas);
   }, []);
+
+  useEffect(() => {
+    if (!uploadedImage) {
+      setUploadedImagePreview('');
+      return undefined;
+    }
+
+    const previewUrl = URL.createObjectURL(uploadedImage);
+    setUploadedImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [uploadedImage]);
 
   const getPosition = (event) => {
     const canvas = canvasRef.current;
@@ -77,6 +92,38 @@ function SketchApp() {
     context.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     hasDrawingRef.current = false;
     setResult('');
+  };
+
+  const handleImageSelection = (event) => {
+    const [image] = event.target.files;
+    if (!image) return;
+
+    if (!image.type.startsWith('image/')) {
+      setUploadedImage(null);
+      setResult('Choose a valid image file.');
+      event.target.value = '';
+      return;
+    }
+
+    if (image.size > 10 * 1024 * 1024) {
+      setUploadedImage(null);
+      setResult('The image must be 10 MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    setUploadedImage(image);
+    setResult('');
+  };
+
+  const clearCurrentImage = () => {
+    if (inputMode === 'draw') {
+      clearCanvas();
+    } else {
+      setUploadedImage(null);
+      setResult('');
+      if (uploadInputRef.current) uploadInputRef.current.value = '';
+    }
   };
 
   const streamResponse = async (response) => {
@@ -125,22 +172,37 @@ function SketchApp() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!hasDrawingRef.current) {
+    if (inputMode === 'draw' && !hasDrawingRef.current) {
       setResult('Draw a sketch before sending it.');
       return;
     }
+    if (inputMode === 'upload' && !uploadedImage) {
+      setResult('Choose an image before sending it.');
+      return;
+    }
 
-    const image = canvasRef.current.toDataURL('image/png').split(',')[1];
     setIsSubmitting(true);
     setResult('Analyzing sketch...');
 
     try {
+      let imageFile;
+      if (inputMode === 'upload') {
+        imageFile = uploadedImage;
+      } else {
+        imageFile = await new Promise((resolve) => {
+          canvasRef.current.toBlob(resolve, 'image/png');
+        });
+        if (!imageFile) {
+          throw new Error('Could not export the sketch image.');
+        }
+      }
+
+      const formData = new FormData();
+      formData.append('image', imageFile, imageFile.name || 'sketch.png');
+
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ image }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -158,7 +220,34 @@ function SketchApp() {
   return (
     <main className="app-shell">
       <form className="sketch-form" onSubmit={handleSubmit}>
-        <div className="canvas-panel">
+        <div className="mode-selector" role="group" aria-label="Choose sketch input mode">
+          <button
+            className={inputMode === 'draw' ? 'mode-button active' : 'mode-button'}
+            type="button"
+            aria-pressed={inputMode === 'draw'}
+            disabled={isSubmitting}
+            onClick={() => {
+              setInputMode('draw');
+              setResult('');
+            }}
+          >
+            Draw sketch
+          </button>
+          <button
+            className={inputMode === 'upload' ? 'mode-button active' : 'mode-button'}
+            type="button"
+            aria-pressed={inputMode === 'upload'}
+            disabled={isSubmitting}
+            onClick={() => {
+              setInputMode('upload');
+              setResult('');
+            }}
+          >
+            Upload image
+          </button>
+        </div>
+
+        <div className="canvas-panel" hidden={inputMode !== 'draw'}>
           <div className="canvas-card">
             <div className="canvas-wrapper">
               <canvas
@@ -171,9 +260,35 @@ function SketchApp() {
             </div>
           </div>
         </div>
+        <div className="upload-panel" hidden={inputMode !== 'upload'}>
+          <input
+            ref={uploadInputRef}
+            id="sketch-image"
+            className="file-input"
+            type="file"
+            accept="image/*"
+            aria-label="Choose an image to analyze"
+            onChange={handleImageSelection}
+            disabled={isSubmitting}
+          />
+          {uploadedImage ? (
+            <div className="selected-image">
+              <img src={uploadedImagePreview} alt="Selected sketch preview" />
+              <p>{uploadedImage.name}</p>
+            </div>
+          ) : (
+            <label className="upload-prompt" htmlFor="sketch-image">
+              <span>Choose an image of your sketch</span>
+              <span className="upload-hint">PNG, JPEG, or another image format · up to 10 MB</span>
+            </label>
+          )}
+          <label className="secondary upload-button" htmlFor="sketch-image">
+            {uploadedImage ? 'Choose a different image' : 'Browse files'}
+          </label>
+        </div>
         <div className="action-row">
-          <button className="secondary" type="button" onClick={clearCanvas} disabled={isSubmitting}>
-            Clear sketch
+          <button className="secondary" type="button" onClick={clearCurrentImage} disabled={isSubmitting}>
+            {inputMode === 'draw' ? 'Clear sketch' : 'Remove image'}
           </button>
           <button className="primary" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Analyzing...' : 'Analyze sketch'}
